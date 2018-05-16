@@ -5,5 +5,5 @@ authors = ["Brian Anderson <andersrb@gmail.com>"]
 
 [dependencies]
 jetscii = "0.4.0"
-faster = { git = "https://github.com/AdamNiederer/faster", rev = "ee605f3627d14c78889d5cda16901a4224912d8d" }
-memchr = "2.0.1"
+#faster = { git = "https://github.com/AdamNiederer/faster", rev = "ee605f3627d14c78889d5cda16901a4224912d8d" }
+#memchr = "2.0.1"
