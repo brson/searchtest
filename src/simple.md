@@ -1,0 +1,1 @@
+As a native Texan, born in Houston, this makes me so god damned proud. A rep from my home town might help take down trump, even in this small way. That's just so freakin cool to me.
