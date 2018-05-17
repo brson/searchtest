@@ -92,6 +92,13 @@ mod find_set_of_bytes {
 }
 
 // TODO: benchmark chars creation
+#[bench]
+fn jetscii_setup(b: &mut Bencher) {
+    b.iter(|| {
+        let bytes = bytes!(b'#', b'_', b'*', b'=', b'-', b'~', b'|', b'[', b'\\', b'>', b'^', b'`', b'&', b'/', b':', b'@');
+        black_box(bytes);
+    });
+}
 
 #[bench]
 fn find_substring_std(b: &mut Bencher) {
