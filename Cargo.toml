@@ -8,3 +8,4 @@ authors = ["Brian Anderson <andersrb@gmail.com>"]
 jetscii = { git = "https://github.com/shepmaster/jetscii.git", branch = "substring" }
 faster = { git = "https://github.com/AdamNiederer/faster", rev = "ee605f3627d14c78889d5cda16901a4224912d8d" }
 memchr = "2.0.1"
+stdsimd = { git = "https://github.com/rust-lang-nursery/stdsimd", rev = "e715c93f41e45d2c6a63a531ac54fff37fd7606b" }
