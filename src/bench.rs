@@ -11,6 +11,8 @@ static FORBIDDEN_CHARS: &[u8] = &[b'#', b'_', b'*', b'=', b'-', b'~', b'|', b'['
 static EXAMPLE_BIG: &str = include_str!("comrak-readme.md");
 static EXAMPLE_SIMPLE: &str = include_str!("simple.md");
 static EXAMPLE_WWW: &str = include_str!("www.md");
+static EXAMPLE_WWW2: &str = include_str!("www2.md");
+static EXAMPLE_WWW3: &str = include_str!("www3.md");
 static EXAMPLE_LIPSUM: &str = include_str!("lipsum.md");
 static EXAMPLE_LIPSUM_BR: &str = include_str!("lipsum-linebreaks.md");
 static EXAMPLE_LIPSUM_EMPH: &str = include_str!("lipsum-emph.md");
@@ -18,6 +20,8 @@ static EXAMPLE_LIPSUM_AT: &str = include_str!("lipsum-at.md");
 static EXAMPLE_UNICODE: &str = include_str!("unicode.md");
 static EXAMPLE_LATE_UNICODE: &str = include_str!("late-unicode.md");
 
+// The byte found here is near the front of the list of bytes, which is good for
+// the memchr searcher.
 mod find_set_of_bytes_early {
 
     use super::*;
@@ -136,6 +140,8 @@ mod find_set_of_bytes_early {
     
 }
 
+// The byte found here is at the end of the list of 'forbidden bytes', which is
+// bad for the memchr searcher.
 mod find_set_of_bytes_late {
 
     use super::*;
@@ -147,7 +153,7 @@ mod find_set_of_bytes_late {
             let r = bytes.find(EXAMPLE_LIPSUM_AT.as_bytes());
             assert!(r.is_some());
             assert_eq!(EXAMPLE_LIPSUM_AT.as_bytes()[r.unwrap()] as char, '@');
-            assert_eq!(r, Some(610));
+            assert_eq!(r, Some(613));
             black_box(r);
         });
     }
@@ -159,7 +165,7 @@ mod find_set_of_bytes_late {
             let r = chars.find(EXAMPLE_LIPSUM_AT);
             assert!(r.is_some());
             assert_eq!(EXAMPLE_LIPSUM_AT.as_bytes()[r.unwrap()] as char, '@');
-            assert_eq!(r, Some(610));
+            assert_eq!(r, Some(613));
             black_box(r);
         });
     }
@@ -181,7 +187,7 @@ mod find_set_of_bytes_late {
             });
             assert!(r.is_some());
             assert_eq!(EXAMPLE_LIPSUM_AT.as_bytes()[r.unwrap()] as char, '@');
-            assert_eq!(r, Some(610));
+            assert_eq!(r, Some(613));
             black_box(r);
         });
     }
@@ -204,7 +210,7 @@ mod find_set_of_bytes_late {
             }
             assert!(r.is_some());
             assert_eq!(EXAMPLE_LIPSUM_AT.as_bytes()[r.unwrap()] as char, '@');
-            assert_eq!(r, Some(610));
+            assert_eq!(r, Some(613));
             black_box(r);
         });
     }
@@ -225,7 +231,7 @@ mod find_set_of_bytes_late {
             }
             assert!(r.is_some());
             assert_eq!(EXAMPLE_LIPSUM_AT.as_bytes()[r.unwrap()] as char, '@');
-            assert_eq!(r, Some(610));
+            assert_eq!(r, Some(613));
             black_box(r);
         });
     }
@@ -239,12 +245,8 @@ fn jetscii_setup(b: &mut Bencher) {
     });
 }
 
-// FIXME: Try twoway for substring search
-// FIXME: Try intrinsic-based pcmp ala twoway crate
-// FIXME: Try intrinsic-based 'short pattern' ala https://github.com/bluss/twoway/blob/master/src/pcmp.rs#L245
-// Try pathological test case
-
-mod find_substring {
+// Looking for a short substring that only appears once
+mod find_short_substring_easy {
 
     use super::*;
 
@@ -358,6 +360,249 @@ mod find_substring {
             assert!(r.is_some());
             assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
             assert_eq!(r, Some(600));
+            black_box(r);
+        });
+    }
+    
+}
+
+// Looking for a short substring that has many false matches
+mod find_short_substring_pathological {
+
+    use super::*;
+
+    #[bench]
+    fn find_std(b: &mut Bencher) {
+        b.iter(|| {
+            let r = EXAMPLE_WWW2.find("www.");
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW2.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1233));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn contains_std(b: &mut Bencher) {
+        b.iter(|| {
+            let r = EXAMPLE_WWW2.contains("www.");
+            assert!(r);
+            black_box(r);
+        });
+    }
+    
+    #[bench]
+    fn jetscii(b: &mut Bencher) {
+        let sub = ByteSubstring::new("www.".as_bytes());
+        b.iter(|| {
+            let r = sub.find(EXAMPLE_WWW2.as_bytes());
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW2.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1233));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn memchr_(b: &mut Bencher) {
+        let needle = "www.".as_bytes();
+        b.iter(|| {
+            let mut total_offset = 0;
+            let mut r = None;
+            let mut slice = EXAMPLE_WWW2.as_bytes();
+            while let Some(i) = memchr(b'w', slice) {
+                assert_eq!(slice[i], b'w');
+                if slice.len() - i >= needle.len() {
+                    let subslice = &slice[i..i + needle.len()];
+                    total_offset += i;
+                    if subslice == needle {
+                        r = Some(total_offset);
+                        break;
+                    } else {
+                        total_offset += 1;
+                        slice = &slice[i + 1..];
+                    }
+                } else {
+                    break;
+                }
+            }
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW2.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1233));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn memchr_std(b: &mut Bencher) {
+        let needle = "www.".as_bytes();
+        b.iter(|| {
+            let mut total_offset = 0;
+            let mut r = None;
+            let mut slice = EXAMPLE_WWW2.as_bytes();
+            while let Some(i) = ::core::slice::memchr::memchr(b'w', slice) {
+                assert_eq!(slice[i], b'w');
+                if slice.len() - i >= needle.len() {
+                    let subslice = &slice[i..i + needle.len()];
+                    total_offset += i;
+                    if subslice == needle {
+                        r = Some(total_offset);
+                        break;
+                    } else {
+                        total_offset += 1;
+                        slice = &slice[i + 1..];
+                    }
+                } else {
+                    break;
+                }
+            }
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW2.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1233));
+            black_box(r);
+        });
+    }
+    
+    #[bench]
+    fn twoway(b: &mut Bencher) {
+        b.iter(|| {
+            let r = twoway::find_bytes(EXAMPLE_WWW2.as_bytes(), b"www.");
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW2.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1233));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn bmh(b: &mut Bencher) {
+        b.iter(|| {
+            let r = twoway::bmh::find(EXAMPLE_WWW2.as_bytes(), b"www.");
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW2.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1233));
+            black_box(r);
+        });
+    }
+    
+}
+
+mod find_long_substring_pathological {
+
+    use super::*;
+
+    static s: &str = "w www w w wwww w. ww ww wwww www w w ww w w w w www ww..";
+
+    #[bench]
+    fn find_std(b: &mut Bencher) {
+        b.iter(|| {
+            let r = EXAMPLE_WWW3.find(s);
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW3.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1176));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn contains_std(b: &mut Bencher) {
+        b.iter(|| {
+            let r = EXAMPLE_WWW3.contains(s);
+            assert!(r);
+            black_box(r);
+        });
+    }
+    
+    #[bench]
+    fn jetscii(b: &mut Bencher) {
+        let sub = ByteSubstring::new(s.as_bytes());
+        b.iter(|| {
+            let r = sub.find(EXAMPLE_WWW3.as_bytes());
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW3.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1176));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn memchr_(b: &mut Bencher) {
+        let needle = s.as_bytes();
+        b.iter(|| {
+            let mut total_offset = 0;
+            let mut r = None;
+            let mut slice = EXAMPLE_WWW3.as_bytes();
+            while let Some(i) = memchr(b'w', slice) {
+                assert_eq!(slice[i], b'w');
+                if slice.len() - i >= needle.len() {
+                    let subslice = &slice[i..i + needle.len()];
+                    total_offset += i;
+                    if subslice == needle {
+                        r = Some(total_offset);
+                        break;
+                    } else {
+                        total_offset += 1;
+                        slice = &slice[i + 1..];
+                    }
+                } else {
+                    break;
+                }
+            }
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW3.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1176));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn memchr_std(b: &mut Bencher) {
+        let needle = s.as_bytes();
+        b.iter(|| {
+            let mut total_offset = 0;
+            let mut r = None;
+            let mut slice = EXAMPLE_WWW3.as_bytes();
+            while let Some(i) = ::core::slice::memchr::memchr(b'w', slice) {
+                assert_eq!(slice[i], b'w');
+                if slice.len() - i >= needle.len() {
+                    let subslice = &slice[i..i + needle.len()];
+                    total_offset += i;
+                    if subslice == needle {
+                        r = Some(total_offset);
+                        break;
+                    } else {
+                        total_offset += 1;
+                        slice = &slice[i + 1..];
+                    }
+                } else {
+                    break;
+                }
+            }
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW3.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1176));
+            black_box(r);
+        });
+    }
+    
+    #[bench]
+    fn twoway(b: &mut Bencher) {
+        b.iter(|| {
+            let r = twoway::find_bytes(EXAMPLE_WWW3.as_bytes(), s.as_bytes());
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW3.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1176));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn bmh(b: &mut Bencher) {
+        b.iter(|| {
+            let r = twoway::bmh::find(EXAMPLE_WWW3.as_bytes(), s.as_bytes());
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW3.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(1176));
             black_box(r);
         });
     }
@@ -500,8 +745,6 @@ mod is_not_ascii {
     }
 }
 
-// Try twoway for split lines
-
 mod split_lines {
 
     use super::*;
@@ -632,7 +875,7 @@ mod split_lines {
     }
 
     #[bench]
-    fn line_split_memchr_std_unchecked(b: &mut Bencher) {
+    fn memchr_std_unchecked(b: &mut Bencher) {
         b.iter(|| {
             unsafe {
                 let mut slice = EXAMPLE_BIG.as_bytes();

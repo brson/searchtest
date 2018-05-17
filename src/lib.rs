@@ -28,13 +28,13 @@ pub fn is_ascii_simd(slice: &[u8]) -> bool {
           is_x86_feature_detected!("sse") ||
           is_x86_feature_detected!("mmx")))
     {
-        unsafe { is_ascii_simd_x86_64_simd(slice) }
+        unsafe { is_ascii_simd_x86_64(slice) }
     } else {
         slice.iter().all(|b| b.is_ascii())
     };
 
     #[cfg(target_arch = "x86_64")]
-    unsafe fn is_ascii_simd_x86_64_simd(slice: &[u8]) -> bool {
+    unsafe fn is_ascii_simd_x86_64(slice: &[u8]) -> bool {
         use std::arch::x86_64::*;
         use std::simd::{u8x32, u8x16, u8x8};
         use std::simd::FromBits;
@@ -83,7 +83,7 @@ pub fn is_ascii_simd(slice: &[u8]) -> bool {
             debug_assert!(slice.len() < 8);
         }
 
-        slice.iter().all(|b| b.is_ascii())
+        slice.is_ascii()
     }
 }
 
@@ -96,25 +96,31 @@ pub fn is_ascii_auto_simd(slice: &[u8], accel: Accel) -> bool {
         if (cfg!(target_feature = "avx2") || is_x86_feature_detected!("avx2"))
             && (accel == Accel::AVX2 || accel == Accel::Any) {
             #[target_feature(enable = "avx2")]
-            {
-                slice.iter().all(|b| b.is_ascii())
+            #[inline]
+            unsafe fn go(slice: &[u8]) -> bool {
+                slice.is_ascii()
             }
+            unsafe { go(slice) }
         } else if (cfg!(target_feature = "sse2") || is_x86_feature_detected!("sse2"))
             && (accel == Accel::SSE2 || accel == Accel::Any) {
             #[target_feature(enable = "sse2")]
-            {
-                slice.iter().all(|b| b.is_ascii())
+            #[inline]
+            unsafe fn go(slice: &[u8]) -> bool {
+                slice.is_ascii()
             }
+            unsafe { go(slice) }
         } else if (cfg!(target_feature = "sse") || is_x86_feature_detected!("sse"))
             && (accel == Accel::SSE || accel == Accel::Any) {
             #[target_feature(enable = "sse")]
-            {
-                slice.iter().all(|b| b.is_ascii())
+            #[inline]
+            unsafe fn go(slice: &[u8]) -> bool {
+                slice.is_ascii()
             }
+            unsafe { go(slice) }
         } else {
-            slice.iter().all(|b| b.is_ascii())
+            slice.is_ascii()
         }
     } else {
-        slice.iter().all(|b| b.is_ascii())
+        slice.is_ascii()
     }
 }
