@@ -1,4 +1,3 @@
-#![allow(warnings)]
 #![feature(test)]
 #![feature(stdsimd)]
 #![feature(mmx_target_feature)]
@@ -45,7 +44,6 @@ pub fn is_ascii_simd(slice: &[u8]) -> bool {
         if cfg!(target_feature = "avx2") ||
             is_x86_feature_detected!("avx2")
         {
-            #[target_feature(enable = "avx2")]
             while slice.len() >= 32 {
                 let vec = u8x32::load_unaligned(&slice[..32]);
                 let vec: __m256i = __m256i::from_bits(vec);
