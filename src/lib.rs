@@ -309,7 +309,7 @@ mod find_substring {
 }
 
 
-fn is_ascii(slice: &[u8]) -> bool {
+fn is_ascii_simd(slice: &[u8]) -> bool {
 
     return if cfg!(target_arch = "x86_64") &&
         ((cfg!(target_feature = "avx2") ||
@@ -396,7 +396,7 @@ mod is_ascii {
     #[bench]
     fn is_ascii_simd(b: &mut Bencher) {
         b.iter(|| {
-            let is_ascii = super::is_ascii("test".as_bytes());
+            let is_ascii = super::is_ascii_simd("test".as_bytes());
             assert!(is_ascii);
         });
     }
