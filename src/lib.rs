@@ -88,6 +88,19 @@ mod find_set_of_bytes {
 
     #[bench]
     fn find_from_set_multi_memchr_table_lipsum_emph(b: &mut Bencher) {
+        b.iter(|| {
+            let mut r = None;
+            for window in FORBIDDEN_CHARS.as_bytes().chunks(3) {
+                match window.len() {
+                    1 => {
+                    }
+                    2 => {
+                    }
+                    3 => {
+                    }
+                }
+            }
+        });
     }
 }
 
