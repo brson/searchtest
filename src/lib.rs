@@ -11,6 +11,7 @@ extern crate test;
 extern crate jetscii;
 extern crate faster;
 extern crate memchr;
+extern crate twoway;
 
 use test::Bencher;
 use jetscii::Bytes;
@@ -18,7 +19,6 @@ use test::black_box;
 use memchr::*;
 use jetscii::ByteSubstring;
 use faster::*;
-
 
 static FORBIDDEN_CHARS: &[u8] = &[b'#', b'_', b'*', b'=', b'-', b'~', b'|', b'[', b'\\', b'>', b'^', b'`', b'&', b'/', b':', b'@'];
 
@@ -253,6 +253,9 @@ fn jetscii_setup(b: &mut Bencher) {
     });
 }
 
+// FIXME: Try twoway for substring search
+// FIXME: Try intrinsic-based pcmp ala twoway crate
+
 mod find_substring {
 
     use super::*;
@@ -268,6 +271,15 @@ mod find_substring {
         });
     }
 
+    #[bench]
+    fn contains_std(b: &mut Bencher) {
+        b.iter(|| {
+            let r = EXAMPLE_WWW.contains("www.");
+            assert!(r);
+            black_box(r);
+        });
+    }
+    
     #[bench]
     fn find_substring_jetscii(b: &mut Bencher) {
         let sub = ByteSubstring::new("www.".as_bytes());
@@ -340,9 +352,31 @@ mod find_substring {
         });
     }
     
+    #[bench]
+    fn find_substring_twoway(b: &mut Bencher) {
+        b.iter(|| {
+            let r = twoway::find_bytes(EXAMPLE_WWW.as_bytes(), b"www.");
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(600));
+            black_box(r);
+        });
+    }
+
+    #[bench]
+    fn find_substring_bmh(b: &mut Bencher) {
+        b.iter(|| {
+            let r = twoway::bmh::find(EXAMPLE_WWW.as_bytes(), b"www.");
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(600));
+            black_box(r);
+        });
+    }
+    
 }
 
-
+// FIXME: Trying doing this with aligned instructions
 fn is_ascii_simd(slice: &[u8]) -> bool {
 
     return if cfg!(target_arch = "x86_64") &&
@@ -601,6 +635,8 @@ mod is_not_ascii {
         });
     }
 }
+
+// Try twoway for split lines
 
 mod split_lines {
 
