@@ -243,7 +243,6 @@ mod find_set_of_bytes_late {
     }
 }
 
-// TODO: benchmark chars creation
 #[bench]
 fn jetscii_setup(b: &mut Bencher) {
     b.iter(|| {
@@ -262,7 +261,8 @@ mod find_substring {
             let r = EXAMPLE_WWW.find("www.");
             assert!(r.is_some());
             assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
-            assert_eq!(r, Some(599));
+            assert_eq!(r, Some(600));
+            black_box(r);
         });
     }
 
@@ -273,7 +273,8 @@ mod find_substring {
             let r = sub.find(EXAMPLE_WWW.as_bytes());
             assert!(r.is_some());
             assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
-            assert_eq!(r, Some(599));
+            assert_eq!(r, Some(600));
+            black_box(r);
         });
     }
 
@@ -302,7 +303,8 @@ mod find_substring {
             }
             assert!(r.is_some());
             assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
-            assert_eq!(r, Some(599));
+            assert_eq!(r, Some(600));
+            black_box(r);
         });
     }
 
@@ -381,34 +383,114 @@ fn is_ascii_simd(slice: &[u8]) -> bool {
     }
 }
 
+#[derive(PartialEq, Eq)]
+enum Accel { AVX2, SSE2, SSE, Any }
+
+fn is_ascii_auto_simd(slice: &[u8], accel: Accel) -> bool {
+
+    return if cfg!(target_arch = "x86_64") {
+        if (cfg!(target_feature = "avx2") || is_x86_feature_detected!("avx2"))
+            && (accel == Accel::AVX2 || accel == Accel::Any) {
+            #[target_feature(enable = "avx2")]
+            {
+                slice.iter().all(|b| b.is_ascii())
+            }
+        } else if (cfg!(target_feature = "sse2") || is_x86_feature_detected!("sse2"))
+            && (accel == Accel::SSE2 || accel == Accel::Any) {
+            #[target_feature(enable = "sse2")]
+            {
+                slice.iter().all(|b| b.is_ascii())
+            }
+        } else if (cfg!(target_feature = "sse") || is_x86_feature_detected!("sse"))
+            && (accel == Accel::SSE || accel == Accel::Any) {
+            #[target_feature(enable = "sse")]
+            {
+                slice.iter().all(|b| b.is_ascii())
+            }
+        } else {
+            slice.iter().all(|b| b.is_ascii())
+        }
+    } else {
+        slice.iter().all(|b| b.is_ascii())
+    }
+}
+
+
 mod is_ascii {
 
     use super::*;
 
     #[bench]
-    fn is_ascii_std(b: &mut Bencher) {
+    fn is_ascii_std_bytes_open(b: &mut Bencher) {
         b.iter(|| {
             let is_ascii = EXAMPLE_LIPSUM.as_bytes().iter().all(|b| b.is_ascii());
             assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_ascii_std_bytes(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = EXAMPLE_LIPSUM.as_bytes().is_ascii();
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_ascii_std_str(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = EXAMPLE_LIPSUM.as_bytes().is_ascii();
+            assert!(is_ascii);
+            black_box(is_ascii);
         });
     }
 
     #[bench]
     fn is_ascii_simd(b: &mut Bencher) {
         b.iter(|| {
-            let is_ascii = super::is_ascii_simd("test".as_bytes());
+            let is_ascii = super::is_ascii_simd(EXAMPLE_LIPSUM.as_bytes());
             assert!(is_ascii);
+            black_box(is_ascii);
         });
     }
 
-    /*#[bench]
-    fn is_ascii_faster(b: &mut Bencher) {
-        let r = EXAMPLE_LIPSUM.as_bytes().simd_iter(u8s(0))
-           .simd_reduce(u8s::splat(0), |a, v| (v & u8s::splat(128)) + a).sum();
-        let is_ascii = r == 0;
-        assert!(is_ascii);
-    }*/
+    #[bench]
+    fn is_ascii_auto_simd_avx2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::AVX2);
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
 
+    #[bench]
+    fn is_ascii_auto_simd_sse2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::SSE2);
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+    
+    #[bench]
+    fn is_ascii_auto_simd_sse(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::SSE);
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_ascii_auto_simd_any(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::Any);
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
 }
 
 mod is_not_ascii {
@@ -416,51 +498,115 @@ mod is_not_ascii {
     use super::*;
 
     #[bench]
-    fn is_not_ascii_std(b: &mut Bencher) {
-        b.iter(|| {
-            let is_ascii = EXAMPLE_UNICODE.as_bytes().iter().all(|b| b.is_ascii());
-            assert!(!is_ascii);
-        });
-    }
-
-    /*#[bench]
-    fn is_not_ascii_faster(b: &mut Bencher) {
-        let r = EXAMPLE_UNICODE.as_bytes().simd_iter(u8s(0))
-           .simd_reduce(u8s::splat(0), |a, v| (v & u8s::splat(128)) + a).sum();
-        let is_ascii = r == 0;
-        assert!(!is_ascii);
-    }*/
-
-}
-
-mod is_not_ascii_late {
-
-    use super::*;
-
-    #[bench]
-    fn is_not_ascii_std(b: &mut Bencher) {
+    fn is_not_ascii_std_bytes_open(b: &mut Bencher) {
         b.iter(|| {
             let is_ascii = EXAMPLE_LATE_UNICODE.as_bytes().iter().all(|b| b.is_ascii());
             assert!(!is_ascii);
+            black_box(is_ascii);
         });
     }
 
-    /*#[bench]
-    fn is_not_ascii_faster(b: &mut Bencher) {
-        let r = EXAMPLE_LATE_UNICODE.as_bytes().simd_iter(u8s(0))
-           .simd_reduce(u8s::splat(0), |a, v| (v & u8s::splat(128)) + a).sum();
-        let is_ascii = r == 0;
-        assert!(!is_ascii);
-    }*/
+    #[bench]
+    fn is_not_ascii_std_bytes(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = EXAMPLE_LATE_UNICODE.as_bytes().is_ascii();
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
 
+    #[bench]
+    fn is_not_ascii_std_str(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = EXAMPLE_LATE_UNICODE.as_bytes().is_ascii();
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_not_ascii_simd(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_simd(EXAMPLE_LATE_UNICODE.as_bytes());
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_not_ascii_auto_simd_avx2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LATE_UNICODE.as_bytes(), Accel::AVX2);
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_not_ascii_auto_simd_sse2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LATE_UNICODE.as_bytes(), Accel::SSE2);
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+    
+    #[bench]
+    fn is_not_ascii_auto_simd_sse(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LATE_UNICODE.as_bytes(), Accel::SSE);
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn is_not_ascii_auto_simd_any(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LATE_UNICODE.as_bytes(), Accel::Any);
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
 }
 
-mod split_newlines {
+mod split_lines {
 
     use super::*;
 
     #[bench]
     fn line_split_std(b: &mut Bencher) {
+        b.iter(|| {
+            let c = EXAMPLE_BIG.lines().count();
+            assert_eq!(c, 172);
+            black_box(c);
+        });
+    }
+
+    #[bench]
+    fn line_split_memchr2(b: &mut Bencher) {
+        b.iter(|| {
+            let mut slice = EXAMPLE_BIG.as_bytes();
+            let mut line = &[][..];
+            let mut lines = 0;
+            while !slice.is_empty() {
+                if let Some(i) = memchr2(b'\r', b'\n', slice) {
+                    line = &slice[..i];
+                    if slice[i] == b'\r' && slice.len() > i && slice[i] == b'\n' {
+                        slice = &slice[i + 2..];
+                    } else if slice[i] == b'\n' {
+                        slice = &slice[i + 1..];
+                    }
+                } else {
+                    line = slice;
+                    slice = &[];
+                }
+                lines += 1;
+            }
+            assert_eq!(lines, 172);
+            black_box(line);
+            black_box(lines);
+        });
     }
 
 }
