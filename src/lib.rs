@@ -2,7 +2,9 @@
 #![feature(test)]
 #![feature(stdsimd)]
 #![feature(mmx_target_feature)]
+#![feature(slice_internals)]
 
+extern crate core;
 extern crate stdsimd;
 extern crate test;
 #[macro_use]
@@ -308,6 +310,36 @@ mod find_substring {
         });
     }
 
+    #[bench]
+    fn find_substring_memchr_std(b: &mut Bencher) {
+        let needle = "www.".as_bytes();
+        b.iter(|| {
+            let mut total_offset = 0;
+            let mut r = None;
+            let mut slice = EXAMPLE_WWW.as_bytes();
+            while let Some(i) = ::core::slice::memchr::memchr(b'w', slice) {
+                assert_eq!(slice[i], b'w');
+                if slice.len() - i >= needle.len() {
+                    let subslice = &slice[i..i + needle.len()];
+                    total_offset += i;
+                    if subslice == needle {
+                        r = Some(total_offset);
+                        break;
+                    } else {
+                        total_offset += 1;
+                        slice = &slice[i + 1..];
+                    }
+                } else {
+                    break;
+                }
+            }
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_WWW.as_bytes()[r.unwrap()] as char, 'w');
+            assert_eq!(r, Some(600));
+            black_box(r);
+        });
+    }
+    
 }
 
 
@@ -670,4 +702,35 @@ mod split_lines {
         });
     }
 
+    #[bench]
+    fn line_split_memchr_std_unchecked(b: &mut Bencher) {
+        b.iter(|| {
+            unsafe {
+                let mut slice = EXAMPLE_BIG.as_bytes();
+                let mut line = &[][..];
+                let mut lines = 0;
+                while !slice.is_empty() {
+                    if let Some(i) = ::core::slice::memchr::memchr(b'\n', slice) {
+                        if i > 0 && slice.get_unchecked(i - 1) == &b'\r'
+                            && slice.get_unchecked(i) == &b'\n'
+                        {
+                            line = slice.get_unchecked(0..i - 1);
+                            slice = slice.get_unchecked(i + 1..slice.len());
+                        } else if slice.get_unchecked(i) == &b'\n' {
+                            line = slice.get_unchecked(0..i);
+                            slice = slice.get_unchecked(i + 1..slice.len());
+                        }
+                    } else {
+                        line = slice;
+                        slice = &[];
+                    }
+                    lines += 1;
+                }
+                assert_eq!(lines, 172);
+                black_box(line);
+                black_box(lines);
+            }
+        });
+    }
+    
 }
