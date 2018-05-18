@@ -770,9 +770,13 @@ mod split_lines {
     #[bench]
     fn std(b: &mut Bencher) {
         b.iter(|| {
-            let c = EXAMPLE_BIG.lines().count();
-            assert_eq!(c, 172);
-            black_box(c);
+            let mut lines = 0;
+            for line in EXAMPLE_BIG.lines() {
+                lines += 1;
+                black_box(line);
+            }
+            assert_eq!(lines, 172);
+            black_box(lines);
         });
     }
 
@@ -795,9 +799,9 @@ mod split_lines {
                     slice = &[];
                 }
                 lines += 1;
+                black_box(line);
             }
             assert_eq!(lines, 172);
-            black_box(line);
             black_box(lines);
         });
     }
@@ -824,9 +828,9 @@ mod split_lines {
                         slice = &[];
                     }
                     lines += 1;
+                    black_box(line);
                 }
                 assert_eq!(lines, 172);
-                black_box(line);
                 black_box(lines);
             }
         });
@@ -854,10 +858,10 @@ mod split_lines {
                     slice = &[];
                 }
                 lines += 1;
+                black_box(lines);
             }
             assert_eq!(lines, 172);
             black_box(line);
-            black_box(lines);
         });
     }
 
@@ -884,16 +888,32 @@ mod split_lines {
                         slice = &[];
                     }
                     lines += 1;
+                    black_box(line);
                 }
                 assert_eq!(lines, 172);
-                black_box(line);
                 black_box(lines);
             }
         });
     }
 
     #[bench]
-    fn memchr_std_unchecked(b: &mut Bencher) {
+    fn memchr_iter_unchecked(b: &mut Bencher) {
+        b.iter(|| {
+            unsafe {
+                let slice = EXAMPLE_BIG.as_bytes();
+                let mut lines = 0;
+                for line in fast_lines(slice) {
+                    lines += 1;
+                    black_box(line);
+                }
+                assert_eq!(lines, 172);
+                black_box(lines);
+            }
+        });
+    }
+    
+    #[bench]
+    fn memchr_core_unchecked(b: &mut Bencher) {
         b.iter(|| {
             unsafe {
                 let mut slice = EXAMPLE_BIG.as_bytes();
@@ -915,9 +935,9 @@ mod split_lines {
                         slice = &[];
                     }
                     lines += 1;
+                    black_box(line);
                 }
                 assert_eq!(lines, 172);
-                black_box(line);
                 black_box(lines);
             }
         });

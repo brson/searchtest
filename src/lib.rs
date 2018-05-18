@@ -235,3 +235,42 @@ pub fn is_ascii_auto_simd(slice: &[u8], accel: Accel) -> bool {
         slice.is_ascii()
     }
 }
+
+pub fn fast_lines(buf: &[u8]) -> FastLines {
+    FastLines(buf)
+}
+
+pub struct FastLines<'a>(&'a [u8]);
+
+impl<'a> Iterator for FastLines<'a> {
+    type Item = &'a [u8];
+
+    fn next(&mut self) -> Option<&'a [u8]> {
+        use memchr::memchr;
+
+        let slice = &mut self.0;
+
+        if self.0.is_empty() {
+            return None;
+        }
+
+        let line;
+
+        unsafe {
+            if let Some(i) = memchr(b'\n', slice) {
+                if i > 0 && slice.get_unchecked(i - 1) == &b'\r' {
+                    line = slice.get_unchecked(0..i - 1);
+                    *slice = slice.get_unchecked(i + 1..slice.len());
+                } else {
+                    line = slice.get_unchecked(0..i);
+                    *slice = slice.get_unchecked(i + 1..slice.len());
+                }
+            } else {
+                line = slice;
+                *slice = slice.get_unchecked(0..0);
+            }
+        }
+
+        Some(line)
+    }
+}
