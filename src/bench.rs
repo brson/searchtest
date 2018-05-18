@@ -641,6 +641,15 @@ mod is_ascii {
     }
 
     #[bench]
+    fn simd2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_simd2(EXAMPLE_LIPSUM.as_bytes());
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
     fn auto_simd_avx2(b: &mut Bencher) {
         b.iter(|| {
             let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::AVX2);
@@ -703,6 +712,15 @@ mod is_not_ascii {
     fn simd(b: &mut Bencher) {
         b.iter(|| {
             let is_ascii = super::is_ascii_simd(EXAMPLE_LATE_UNICODE.as_bytes());
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn simd2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_simd2(EXAMPLE_LATE_UNICODE.as_bytes());
             assert!(!is_ascii);
             black_box(is_ascii);
         });
