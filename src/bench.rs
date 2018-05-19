@@ -900,9 +900,8 @@ mod split_lines {
     fn memchr_iter_unchecked(b: &mut Bencher) {
         b.iter(|| {
             unsafe {
-                let slice = EXAMPLE_BIG.as_bytes();
                 let mut lines = 0;
-                for line in fast_lines(slice) {
+                for line in fast_lines(EXAMPLE_BIG) {
                     lines += 1;
                     black_box(line);
                 }

@@ -236,16 +236,17 @@ pub fn is_ascii_auto_simd(slice: &[u8], accel: Accel) -> bool {
     }
 }
 
-pub fn fast_lines(buf: &[u8]) -> FastLines {
-    FastLines(buf)
+pub fn fast_lines(buf: &str) -> FastLines {
+    FastLines(buf.as_bytes())
 }
 
 pub struct FastLines<'a>(&'a [u8]);
 
 impl<'a> Iterator for FastLines<'a> {
-    type Item = &'a [u8];
+    type Item = &'a str;
 
-    fn next(&mut self) -> Option<&'a [u8]> {
+    // TODO: inline vs inline(never)
+    fn next(&mut self) -> Option<&'a str> {
         use memchr::memchr;
 
         let slice = &mut self.0;
@@ -269,8 +270,8 @@ impl<'a> Iterator for FastLines<'a> {
                 line = slice;
                 *slice = slice.get_unchecked(0..0);
             }
-        }
 
-        Some(line)
+            Some(::std::str::from_utf8_unchecked(line))
+        }
     }
 }
