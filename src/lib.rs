@@ -261,10 +261,10 @@ impl<'a> Iterator for FastLines<'a> {
             if let Some(i) = memchr(b'\n', slice) {
                 if i > 0 && slice.get_unchecked(i - 1) == &b'\r' {
                     line = slice.get_unchecked(0..i - 1);
-                    *slice = slice.get_unchecked(i + 1..slice.len());
+                    *slice = slice.get_unchecked(i + 1..);
                 } else {
                     line = slice.get_unchecked(0..i);
-                    *slice = slice.get_unchecked(i + 1..slice.len());
+                    *slice = slice.get_unchecked(i + 1..);
                 }
             } else {
                 line = slice;
