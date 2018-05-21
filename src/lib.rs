@@ -233,7 +233,11 @@ pub unsafe fn is_ascii_simd3_x86_64_avx2(mut slice: &[u8]) -> bool {
         }
         slice = &slice.get_unchecked(32..);
     }
-    slice.is_ascii()
+    if slice.len() >= 16 {
+        is_ascii_simd3_x86_64_sse2(slice)
+    } else {
+        slice.is_ascii()
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -250,7 +254,11 @@ pub unsafe fn is_ascii_simd3_x86_64_sse2(mut slice: &[u8]) -> bool {
         }
         slice = &slice[16..];
     }
-    slice.is_ascii()
+    if slice.len() >= 16 {
+        is_ascii_simd3_x86_64_sse(slice)
+    } else {
+        slice.is_ascii()
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -306,6 +314,28 @@ pub fn is_ascii_auto_simd(slice: &[u8], accel: Accel) -> bool {
     } else {
         slice.is_ascii()
     }
+}
+
+#[inline(never)]
+pub fn is_ascii_naive_uninlined(buf: &[u8]) -> bool {
+    for byte in buf.iter() {
+        if *byte & 128 != 0 {
+            return false;
+        }
+    }
+    true
+}
+
+// TODO fix
+// TODO inlined tests
+#[inline(never)]
+pub fn is_ascii_naive_uninlined(buf: &[u8]) -> bool {
+    for bytes in buf.iter().chunks(::std::mem::size_of::<usize>) {
+        if *byte & 128 != 0 {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn fast_lines(buf: &str) -> FastLines {

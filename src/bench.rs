@@ -742,6 +742,15 @@ mod is_ascii {
             black_box(is_ascii);
         });
     }
+
+    #[bench]
+    fn naive(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_naive(EXAMPLE_LIPSUM.as_bytes());
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
 }
 
 mod is_not_ascii {
@@ -851,6 +860,15 @@ mod is_not_ascii {
     fn auto_simd_any(b: &mut Bencher) {
         b.iter(|| {
             let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LATE_UNICODE.as_bytes(), Accel::Any);
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn naive(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_naive(EXAMPLE_LATE_UNICODE.as_bytes());
             assert!(!is_ascii);
             black_box(is_ascii);
         });
