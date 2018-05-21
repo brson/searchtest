@@ -171,6 +171,28 @@ mod find_set_of_bytes_late {
     }
     
     #[bench]
+    fn open_table(b: &mut Bencher) {
+        let mut table: [bool; 256] = [false; 256];
+        for ch in FORBIDDEN_CHARS {
+            table[*ch as usize] = true;
+        }
+        let table = table;
+        b.iter(|| {
+            let mut r = None;
+            for (i, byte) in EXAMPLE_LIPSUM_EMPH.as_bytes().iter().enumerate() {
+                if table[*byte as usize] {
+                    r = Some(i);
+                    break;
+                }
+            }
+            assert!(r.is_some());
+            assert_eq!(EXAMPLE_LIPSUM_EMPH.as_bytes()[r.unwrap()] as char, '_');
+            assert_eq!(r, Some(419));
+            black_box(r);
+        });
+    }
+
+    #[bench]
     fn position_table(b: &mut Bencher) {
         let mut table: [bool; 256] = [false; 256];
         for ch in FORBIDDEN_CHARS {
@@ -650,9 +672,45 @@ mod is_ascii {
     }
 
     #[bench]
+    fn simd3(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_simd3(EXAMPLE_LIPSUM.as_bytes());
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn simd3_avx2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = unsafe { super::is_ascii_simd3_x86_64_avx2(EXAMPLE_LIPSUM.as_bytes()) };
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn simd3_sse2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = unsafe { super::is_ascii_simd3_x86_64_sse2(EXAMPLE_LIPSUM.as_bytes()) };
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+    
+    #[bench]
+    fn simd3_sse(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = unsafe { super::is_ascii_simd3_x86_64_sse(EXAMPLE_LIPSUM.as_bytes()) };
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
     fn auto_simd_avx2(b: &mut Bencher) {
         b.iter(|| {
-            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::AVX2);
+            let is_ascii = unsafe { super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::AVX2) };
             assert!(is_ascii);
             black_box(is_ascii);
         });
@@ -661,7 +719,7 @@ mod is_ascii {
     #[bench]
     fn auto_simd_sse2(b: &mut Bencher) {
         b.iter(|| {
-            let is_ascii = super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::SSE2);
+            let is_ascii = unsafe { super::is_ascii_auto_simd(EXAMPLE_LIPSUM.as_bytes(), Accel::SSE2) };
             assert!(is_ascii);
             black_box(is_ascii);
         });
@@ -726,6 +784,42 @@ mod is_not_ascii {
         });
     }
 
+    #[bench]
+    fn simd3(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_simd3(EXAMPLE_LATE_UNICODE.as_bytes());
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+    
+    #[bench]
+    fn simd3_avx2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = unsafe { super::is_ascii_simd3_x86_64_avx2(EXAMPLE_LATE_UNICODE.as_bytes()) };
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn simd3_sse2(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = unsafe { super::is_ascii_simd3_x86_64_sse2(EXAMPLE_LATE_UNICODE.as_bytes()) };
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn simd3_sse(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = unsafe { super::is_ascii_simd3_x86_64_sse(EXAMPLE_LATE_UNICODE.as_bytes()) };
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+    
     #[bench]
     fn auto_simd_avx2(b: &mut Bencher) {
         b.iter(|| {

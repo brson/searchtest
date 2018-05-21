@@ -198,6 +198,78 @@ pub fn is_ascii_simd2(slice: &[u8]) -> bool {
     }
 }
 
+pub fn is_ascii_simd3(slice: &[u8]) -> bool {
+
+    if !cfg!(target_arch = "x86_64") {
+        return slice.is_ascii();
+    }
+
+    if cfg!(target_feature = "avx2") || is_x86_feature_detected!("avx2") {
+        return unsafe { is_ascii_simd3_x86_64_avx2(slice) };
+    }
+
+    if cfg!(target_feature = "sse2") || is_x86_feature_detected!("sse2") {
+        return unsafe { is_ascii_simd3_x86_64_sse2(slice) };
+    }
+
+    if cfg!(target_feature = "sse") || is_x86_feature_detected!("sse") {
+        return unsafe { is_ascii_simd3_x86_64_sse(slice) };
+    }
+
+    return slice.is_ascii();
+}
+
+#[cfg(target_arch = "x86_64")]
+pub unsafe fn is_ascii_simd3_x86_64_avx2(mut slice: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+    use std::simd::u8x32;
+    use std::simd::FromBits;
+
+    while slice.len() >= 32 {
+        let vec = u8x32::load_unaligned_unchecked(&slice.get_unchecked(..32));
+        let vec: __m256i = __m256i::from_bits(vec);
+        if _mm256_movemask_epi8(vec) != 0 {
+            return false;
+        }
+        slice = &slice.get_unchecked(32..);
+    }
+    slice.is_ascii()
+}
+
+#[cfg(target_arch = "x86_64")]
+pub unsafe fn is_ascii_simd3_x86_64_sse2(mut slice: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+    use std::simd::u8x16;
+    use std::simd::FromBits;
+
+    while slice.len() >= 16 {
+        let vec = u8x16::load_unaligned_unchecked(&slice[..16]);
+        let vec: __m128i = __m128i::from_bits(vec);
+        if _mm_movemask_epi8(vec) != 0 {
+            return false;
+        }
+        slice = &slice[16..];
+    }
+    slice.is_ascii()
+}
+
+#[cfg(target_arch = "x86_64")]
+pub unsafe fn is_ascii_simd3_x86_64_sse(mut slice: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+    use std::simd::u8x8;
+    use std::simd::FromBits;
+
+    while slice.len() >= 8 {
+        let vec = u8x8::load_unaligned_unchecked(&slice.get_unchecked(..8));
+        let vec: __m64 = __m64::from_bits(vec);
+        if _mm_movemask_pi8(vec) != 0 {
+            return false;
+        }
+        slice = &slice.get_unchecked(8..);
+    }
+    slice.is_ascii()
+}
+
 #[derive(PartialEq, Eq)]
 pub enum Accel { AVX2, SSE2, SSE, Any }
 
