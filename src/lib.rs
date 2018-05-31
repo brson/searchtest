@@ -204,12 +204,13 @@ pub fn is_ascii_simd3(slice: &[u8]) -> bool {
         return slice.is_ascii();
     }
 
-    if cfg!(target_feature = "avx2") || is_x86_feature_detected!("avx2") {
-        return unsafe { is_ascii_simd3_x86_64_avx2(slice) };
-    }
-
+    // In my experiments on skylake sse2 is faster than avx2 here
     if cfg!(target_feature = "sse2") || is_x86_feature_detected!("sse2") {
         return unsafe { is_ascii_simd3_x86_64_sse2(slice) };
+    }
+
+    if cfg!(target_feature = "avx2") || is_x86_feature_detected!("avx2") {
+        return unsafe { is_ascii_simd3_x86_64_avx2(slice) };
     }
 
     if cfg!(target_feature = "sse") || is_x86_feature_detected!("sse") {
