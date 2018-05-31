@@ -744,9 +744,18 @@ mod is_ascii {
     }
 
     #[bench]
-    fn naive(b: &mut Bencher) {
+    fn naive_uninlined(b: &mut Bencher) {
         b.iter(|| {
-            let is_ascii = super::is_ascii_naive(EXAMPLE_LIPSUM.as_bytes());
+            let is_ascii = super::is_ascii_naive_uninlined(EXAMPLE_LIPSUM.as_bytes());
+            assert!(is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn naive_inlined(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_naive_inlined(EXAMPLE_LIPSUM.as_bytes());
             assert!(is_ascii);
             black_box(is_ascii);
         });
@@ -866,9 +875,18 @@ mod is_not_ascii {
     }
 
     #[bench]
-    fn naive(b: &mut Bencher) {
+    fn naive_uninlined(b: &mut Bencher) {
         b.iter(|| {
-            let is_ascii = super::is_ascii_naive(EXAMPLE_LATE_UNICODE.as_bytes());
+            let is_ascii = super::is_ascii_naive_uninlined(EXAMPLE_LATE_UNICODE.as_bytes());
+            assert!(!is_ascii);
+            black_box(is_ascii);
+        });
+    }
+
+    #[bench]
+    fn naive_inlined(b: &mut Bencher) {
+        b.iter(|| {
+            let is_ascii = super::is_ascii_naive_inlined(EXAMPLE_LATE_UNICODE.as_bytes());
             assert!(!is_ascii);
             black_box(is_ascii);
         });

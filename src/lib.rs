@@ -326,11 +326,9 @@ pub fn is_ascii_naive_uninlined(buf: &[u8]) -> bool {
     true
 }
 
-// TODO fix
-// TODO inlined tests
-#[inline(never)]
-pub fn is_ascii_naive_uninlined(buf: &[u8]) -> bool {
-    for bytes in buf.iter().chunks(::std::mem::size_of::<usize>) {
+#[inline(always)]
+pub fn is_ascii_naive_inlined(buf: &[u8]) -> bool {
+    for byte in buf.iter() {
         if *byte & 128 != 0 {
             return false;
         }
